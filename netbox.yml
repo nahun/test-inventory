@@ -1,0 +1,52 @@
+plugin: netbox.netbox.nb_inventory
+api_endpoint: https://f5itne-netbox.westus2.cloudapp.azure.com
+validate_certs: no
+strict: yes
+fetch_all: yes
+plurals: no
+
+cache: yes
+cache_plugin: jsonfile
+cache_connection: ~/.ansible/tmp
+cache_timeout: 300
+
+config_context: yes
+flatten_config_context: yes
+flatten_custom_fields: yes
+interfaces: yes
+
+query_filters:
+  - has_primary_ip: 'true'
+
+compose:
+  serial_num: serial | default("")
+  inventory_environment: custom_fields.environment
+  zone: custom_fields.zone
+  status: status.value
+  nb_primary_ip_id: primary_ip.id
+  nb_id: id
+  device_os: platform.slug
+
+group_by:
+  - site
+  - region
+  - role
+  - tag
+  - manufacturer
+  - is_virtual
+  - cluster_type
+
+keyed_groups:
+  - key: platform
+    separator: ""
+  - key: custom_fields.zone.lower()
+    prefix: zone
+    separator: _
+
+groups:
+  f5_bigip_pubdmz_passwd: "platform == 'f5-bigip' and zone in ['PZD', 'PZT', 'PZS', 'PZP']"
+  f5_bigip_corpdmz_passwd: "platform == 'f5-bigip' and (zone in ['CZS', 'CZP', 'EXT'] or role in ['iap'])"
+  f5_bigip_internal_passwd: "platform == 'f5-bigip' and not zone in ['PZD', 'PZT', 'PZS', 'PZP', 'CZS', 'CZP', 'EXT'] and not role in ['iap']"
+  rescue_external: "platform not in ['f5-bigip', 'pa-panos'] and config_context.get('rescue_password') == 'external'"
+  rescue_internal: "platform not in ['f5-bigip', 'pa-panos'] and config_context.get('rescue_password') != 'external'"
+
